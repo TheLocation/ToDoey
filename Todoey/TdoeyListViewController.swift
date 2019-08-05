@@ -52,6 +52,25 @@ class TdoeyListViewController: UITableViewController {
         tableView.deselectRow(at: indexPath, animated: true)
     }
 
+    //Mark - Add IBAction Bar Button Pressed
+    @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
+        
+        let alert = UIAlertController(title: "Add new Todoey Item", message:" ", preferredStyle: .alert)
+        
+        let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
+            //What happens when Add Item button is pressed
+            print("Success")
+            }
+        
+        alert.addTextField { (alertTextField) in
+            alertTextField.placeholder = "Create new Item"
+        }
+        
+        alert.addAction(action)
+        
+        present(alert, animated: true, completion: nil)
+        
+    }
     
 }
 
