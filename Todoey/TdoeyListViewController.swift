@@ -13,9 +13,19 @@ class TdoeyListViewController: UITableViewController {
     //Now array is usable initiallizig it as var
     var itemArray = ["Sephiroth", "Cloud", "Squall", "Rinoa"]
     
+    //Initializing Default User Settings to Store Data into our app dominio
+    let defaults = UserDefaults.standard
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
+        
+        //showing saved array into default stored data. Cast it as an array of strings.
+        
+        //Adding an if statement to check if data exists
+        if let items = defaults.array(forKey: "ToDoListArray") as? [String]{
+            itemArray = items
+        }
     }
     
     //Table view DataSource Methods
@@ -71,6 +81,12 @@ class TdoeyListViewController: UITableViewController {
             
             //Appending new element to array
             self.itemArray.append(textField.text!)
+            
+            //Saving added element to default settings
+            //You can retrieve all elements saved by using set key value
+            //We need ID of Sandbox and Simulator where data is stored -> AppDelegate.swift
+            
+            self.defaults.set(self.itemArray, forKey: "ToDoListArray")
             
             self.tableView.reloadData()
             
