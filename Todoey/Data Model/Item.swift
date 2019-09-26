@@ -9,9 +9,10 @@
 import Foundation
 
 //creating class to solve bug relating to checkmark
-class Item{
+class Item: Codable {
     
     var title:String = ""
     var done:Bool = false
     
 }
+ 

@@ -21,8 +21,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         //printing ID of Sandbox and Simulator to see where data is stored (SEE lesson 225 at 4:50)
         
-    print(NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).last! as String)
-        
         //Once lauched app, search for plist file inside library folder (see path displayed in consolle)
         
         return true

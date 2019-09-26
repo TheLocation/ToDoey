@@ -11,16 +11,21 @@ import UIKit
 class TdoeyListViewController: UITableViewController {
 
     //Now array is usable initiallizig it as va
-    
     var itemArray = [Item]()
+    
+    //Initializing file manager to store data into app Sandbox
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist") //It is an array so I take first element
 
     //Initializing Default User Settings to Store Data into our app dominio
-    let defaults = UserDefaults.standard
+    //let defaults = UserDefaults.standard
     
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
         
+        print("data + \(dataFilePath!)")
+        
+        /*
         let newItem_1 = Item()
         newItem_1.title = "Sephiroth"
         itemArray.append(newItem_1)
@@ -36,13 +41,15 @@ class TdoeyListViewController: UITableViewController {
         let newItem_4 = Item()
         newItem_4.title = "Rinoa"
         itemArray.append(newItem_4)
+        */
      
         //showing saved array into default stored data. Cast it as an array of strings.
         
+        loadData()
+        
         //Adding an if statement to check if data exists
-        if let items = defaults.array(forKey: "ToDoListArray") as? [Item]{
-            itemArray = items
-        }
+        //if let items = defaults.array(forKey: "ToDoListArray") as? [Item]{
+            //itemArray = items
         
     }
     
@@ -89,6 +96,8 @@ class TdoeyListViewController: UITableViewController {
         
         itemArray[indexPath.row].done = !itemArray[indexPath.row].done
         
+        saveData()
+        
         //FOLLOWING CODE DOES THE SAME THING
         /*
         if itemArray[indexPath.row].done == false {
@@ -99,7 +108,7 @@ class TdoeyListViewController: UITableViewController {
         }
         */
         
-        tableView.reloadData()
+        //tableView.reloadData()
         
         //Cell ogject for managing its features
         //let myCell:UITableViewCell = tableView.cellForRow(at: indexPath)!
@@ -136,17 +145,30 @@ class TdoeyListViewController: UITableViewController {
             
             self.itemArray.append(newItem)
             
+            self.saveData()
+            
             //Saving added element to default settings
             //You can retrieve all elements saved by using set key command
             //We need ID of Sandbox and Simulator where data is stored -> AppDelegate.swift
+             
+            //self.defaults.set(self.itemArray, forKey: "ToDoListArray")
             
-            self.defaults.set(self.itemArray, forKey: "ToDoListArray")
+            //Initialazing encoder to read stored data on plist file.
+            let encoder = PropertyListEncoder()
             
-            self.tableView.reloadData()
-            
+            do
+            {
+                let data = try encoder.encode(self.itemArray)
+                try data.write(to:self.dataFilePath!)
+            }
+            catch
+            {
+                print("Error encoding data \(error)")
+            }
+                self.tableView.reloadData()
             }
         
-        alert.addTextField { (alertTextField) in
+            alert.addTextField { (alertTextField) in
             alertTextField.placeholder = "Create new Item"
             textField = alertTextField
         }
@@ -157,6 +179,36 @@ class TdoeyListViewController: UITableViewController {
         //Presenting alert
         present(alert, animated: true, completion: nil)
         
+    }
+    
+    func saveData(){
+        let encoder = PropertyListEncoder()
+        
+        do
+        {
+            let data = try encoder.encode(itemArray)
+            try data.write(to:dataFilePath!)
+        }
+        catch
+        {
+            print("Error encoding data \(error)")
+        }
+        self.tableView.reloadData()
+    }
+    
+    func loadData(){
+        if let data = try? Data(contentsOf: dataFilePath!){
+            let decoder = PropertyListDecoder()
+            do
+            {
+            itemArray = try decoder.decode([Item].self, from: data)
+            }
+            catch
+            {
+                print("Error decoding Item Array, \(error)")
+            }
+           
+        }
     }
     
 }
