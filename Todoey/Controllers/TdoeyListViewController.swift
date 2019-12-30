@@ -48,7 +48,7 @@ class TdoeyListViewController: UITableViewController {
         // Do any additional setup after loading the view, typically from a nib.
         
         //Printing file path to see where DB data is located
-        print("file + \(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))")
+        //print("file + \(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))")
         
         //showing saved array into default stored data. Cast it as an array of strings.
         
