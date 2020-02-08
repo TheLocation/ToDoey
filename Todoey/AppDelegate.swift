@@ -30,17 +30,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         //DB location
         print(Realm.Configuration.defaultConfiguration.fileURL)
         
-        let data = Data()
-        data.name = "Matteo"
-        data.age = 35
-        
         do
         {
             let realm = try Realm()
-            //Commiting change to Realm database
-            try realm.write {
-                realm.add(data)
-            }
         }
         catch
         {

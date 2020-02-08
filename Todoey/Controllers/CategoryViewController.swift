@@ -8,38 +8,44 @@
 
 import UIKit
 import CoreData
+import RealmSwift
 
 class CategoryViewController: UITableViewController {
 
+    //initializing Realm DB (see Realm Documentation)
+    let realm = try! Realm()
+    
     //1.Initializing Array:
-    var catArray = [Category]()
+    //var catArray = [Category]() - COredata
+    var catArray: Results<Category>?
     
     //2. Initializing context variable: it temporary contins data to be stored into SQL DB.
     
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    //let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext - Coredata
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+         
         loadCategory()
         
-        print("file cat + \(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))")
+        //print("file cat + \(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))")
     }
     
     //MARK - TableView DataSource Methods
     //3. Counting rows in table (numberOfRowsInSection)
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return catArray.count
+        
+        //If catArray is not nil then return count, otherwise return 1
+        return catArray?.count ?? 1
+        // ??Nil coalescing operator.
     }
     
     //4. Initializing cell inside tableView(cellForRowAt)
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
         let catCell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
-
-        let catItem = catArray[indexPath.row]
         
-        catCell.textLabel?.text = catItem.title
+        catCell.textLabel?.text = catArray?[indexPath.row].title ?? "No categories added yet"
         
         //catItem.done == true ? (catCell.accessoryType = .checkmark) : (catCell.accessoryType = .none)
         
@@ -59,7 +65,7 @@ class CategoryViewController: UITableViewController {
         
     //Which selected cell?
         if let indexPath = tableView.indexPathForSelectedRow{
-            destinationVC.selectedCategory = catArray[indexPath.row]
+            destinationVC.selectedCategory = catArray?[indexPath.row]
         }
     }
     
@@ -82,16 +88,18 @@ class CategoryViewController: UITableViewController {
         
         let action = UIAlertAction(title: "Add Item", style: .default) {(action) in
             
-            let newItem = Category(context: self.context)
+            //let newItem = Category(context: self.context) - CoreData
+            let newItem = Category()
             
             //Defining ITEM ATTRIBUTE
             newItem.title = textField.text!
             
             //newItem.done = false
             
-            self.catArray.append(newItem)
+            //Result Datatype is an autoupdating container, thus we do not need to append new items to our result database.
+            //self.catArray.append(newItem) - CoreData
             
-            self.saveCategory()
+            self.save(category: newItem)
             
         }
         //Adding action after alert
@@ -101,19 +109,20 @@ class CategoryViewController: UITableViewController {
         self.present(alert, animated: true, completion: nil)
     }
     
-    func saveCategory()
-    {
+    func save(category: Category){
         do
         {
-            try context.save()
-        }
-        catch
-        {
+            try realm.write {
+                realm.add(category)
+            }
+            //try context.save() - Coredata
+        } catch {
             print("error saving message, \(error)")
         }
         self.tableView.reloadData()
     }
     
+    /* CORE DATA
     func loadCategory(with request:NSFetchRequest<Category> = Category.fetchRequest()){
         //let request : NSFetchRequest<Item> = Item.fetchRequest()
         do{
@@ -124,6 +133,12 @@ class CategoryViewController: UITableViewController {
         {
             print("error fetching data from context \(error)")
         }
+        tableView.reloadData()
+    }
+ */
+    
+    func loadCategory(){
+        catArray = realm.objects(Category.self)
         tableView.reloadData()
     }
 }

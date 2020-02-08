@@ -16,12 +16,15 @@
 
 
 import UIKit
-import CoreData
+//import CoreData
+import RealmSwift
 
 class TdoeyListViewController: UITableViewController {
 
+    //creating Realm Instance
+    let realm = try! Realm() 
     //Now array is usable initiallizig it as var
-    var itemArray = [Item]()
+    var todoItems: Results<Item>?
     
     var selectedCategory : Category? {
         //didSet: in did set brackets things happen when slectedCategory has a value. We call load Items when we are certain we got a selectedCategory value.
@@ -33,7 +36,8 @@ class TdoeyListViewController: UITableViewController {
     
     //adding singleton to refer to context in AppDelegate class
     //In SQLite DB, context defined variable is a "temporary area" where data is temporary stored.
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    
+    //let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext - Core Data
     
     //Initializing file manager to store data into app Sandbox
     //---DEPRECATED---//
@@ -65,7 +69,7 @@ class TdoeyListViewController: UITableViewController {
     //Telling Xcode to create N cells depending on array count
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         
-        return itemArray.count
+        return todoItems?.count ?? 1
     }
     
     //Intializing cell inside a TableView
@@ -77,11 +81,16 @@ class TdoeyListViewController: UITableViewController {
     
         let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
         
-        let item = itemArray[indexPath.row]
+        if let item = todoItems?[indexPath.row]{
+            
+            cell.textLabel?.text = item.title
+    
+            item.done == true ? (cell.accessoryType = .checkmark) : (cell.accessoryType = .none)
+        } else {
+            cell.textLabel?.text = "No Items Added Yet"
+        }
         
-        cell.textLabel?.text = item.title
-        
-        item.done == true ? (cell.accessoryType = .checkmark) : (cell.accessoryType = .none)
+     
     
         return cell //UItableViewCell has to be returned
     }
@@ -102,7 +111,7 @@ class TdoeyListViewController: UITableViewController {
         itemArray.remove(at: indexPath.row)
         */
         
-        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
+        //todoItems[indexPath.row].done = !todoItems[indexPath.row].done
     
         
         
@@ -130,9 +139,24 @@ class TdoeyListViewController: UITableViewController {
         //    tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
         //}
         //Deselecting row (background colour grey) when pushed
-        tableView.deselectRow(at: indexPath, animated: true)
+        
+        //UPdating realm data selecting a row
+        if let item = todoItems?[indexPath.row]{
+            do{
+                try realm.write{
+                    item.done = !item.done
+                    //Command to delete a line
+                    //realm.delete(item)
+                }
+            }
+            catch{
+                print("\(error) in saving towns!")
+            }
+        }
         
         tableView.reloadData()
+        
+        tableView.deselectRow(at: indexPath, animated: true)
     }
 
     //Mark - Add IBAction Bar Button Pressed
@@ -145,33 +169,44 @@ class TdoeyListViewController: UITableViewController {
         
         var textField = UITextField()
         
-        //AddingTextField to Alert Button (better create a class)
-        alert.addTextField { (alertTextField) in
-            alertTextField.placeholder = "Create new Item"
-            textField = alertTextField
-        }
-        
         //Action appearing when pressing + button
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             //What happens when Add Item button is pressed
             
             //Appending new element to array
-            //Item is a NSManagedObject and it can be identified as a row of our DB. We save it in temporary area "context".
-            let newItem = Item(context: self.context)
+            //Item is a NSManagedObject and it can be identified as a row of our DB. We save it in temporary area "context")
+            
+            if let currentCategory = self.selectedCategory{
+                do{
+                    try self.realm.write {
+                    let newItem = Item()
+                    newItem.title = textField.text!
+                    newItem.date = Date()
+                    //appending newitem to selected category
+                    currentCategory.items.append(newItem)
+                    }
+                  }
+                    catch
+                    {
+                        print("\(error) in uploading cities from category")
+                    }
+                }
+            
+       self.tableView.reloadData()
             
             //Defining ITEM ATTRIBUTE
-            newItem.title = textField.text!
+    
             
-            newItem.done = false
+    //newItem.done = false
             
             //Category I Should pass to entity categoru should be the one selected.
-            newItem.parentCategory = self.selectedCategory
+    
             
             //setting item's done property to false to avoid error given by saveData class.
             
-            self.itemArray.append(newItem)
+    //self.itemArray.append(newItem)
             
-            self.saveData()
+            //self.saveData()
             
             //Saving added element to default settings
             //-----DEPRECATED-----//
@@ -184,6 +219,12 @@ class TdoeyListViewController: UITableViewController {
             
         }
         
+        //AddingTextField to Alert Button (better create a class)
+        alert.addTextField { (alertTextField) in
+            alertTextField.placeholder = "Create new Item"
+            textField = alertTextField
+        }
+        
         //Adding action after alert
         alert.addAction(action)
         
@@ -194,88 +235,134 @@ class TdoeyListViewController: UITableViewController {
     
     //MARK: Model Manipulation Methods
     
-    func saveData(){
-        do
-        {
-            //Saving context permanently
-            try context.save()
-        }
-        catch
-        {
-          print("error saving message, \(error)")
-        }
-        self.tableView.reloadData()
-    }
+    
+    
+//    func saveData(){
+//        do
+//        {
+//            //Saving context permanently
+//            try context.save()
+//        }
+//        catch
+//        {
+//          print("error saving message, \(error)")
+//        }
+//        self.tableView.reloadData()
+//    }
     
     
     //With: external parameter.
     //Item.fetchRequest() = default value.
     
     //setting predicate to nil so
-    func loadData(with request:NSFetchRequest<Item> = Item.fetchRequest(), predicate: NSPredicate? = nil){
-   
-        //adding predicate to show compiler to head to proper selected category.
-        
-        let categoryPredicate = NSPredicate(format: "parentCategory.title MATCHES %@", selectedCategory!.title!)
-        
-        //Adding compoundPredicate to pass category predicate and predicate that get passed in.
-        
-        //Il predicate is nil, we only pass categorypredicate, otherwise we pass both predicates (searchbar and category): It is tone to manage predicate unwrupping set, as a default, as nil (see function arguments)
-        
-        if let additionalPredicate = predicate{
-            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, additionalPredicate])
-        }else
-        {
-            request.predicate = categoryPredicate
-        }
-        
-        do{
-            //Assigning fetch request to itemarray, where I store data
-            itemArray = try context.fetch(request)
-        }
-        catch
-        {
-            print("error fetching data from context \(error)")
-        }
-        
-        tableView.reloadData()
+
+//MARK - LOAD DATA DEPENDING FROM CHOSEN CATEGORY
+    
+func loadData(){
+    
+    todoItems = selectedCategory?.items.sorted(byKeyPath: "title", ascending: true)
+    //adding predicate to show compiler to head to proper selected category.
+
+    //    let categoryPredicate = NSPredicate(format: "parentCategory.title MATCHES %@", selectedCategory!.title!)
+    //
+    ////Adding compoundPredicate to pass category predicate and predicate that get passed in.
+    //
+    ////Il predicate is nil, we only pass categorypredicate, otherwise we pass both predicates (searchbar and category): It is tone to manage predicate unwrupping set, as a default, as nil (see function arguments)
+    //
+    //    if let additionalPredicate = predicate{
+    //        request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, additionalPredicate])
+    //            }else
+    //            {
+    //                request.predicate = categoryPredicate
+    //            }
+    //
+    //            do{
+    //                //Assigning fetch request to itemarray, where I store data
+    //                itemArray = try context.fetch(request)
+    //            }
+    //            catch
+    //            {
+    //                print("error fetching data from context \(error)")
+    //            }
+    
+            tableView.reloadData()
     }
+    
+//    func loadData(with request:NSFetchRequest<Item> = Item.fetchRequest(), predicate: NSPredicate? = nil){
+//
+//        //adding predicate to show compiler to head to proper selected category.
+//
+//        let categoryPredicate = NSPredicate(format: "parentCategory.title MATCHES %@", selectedCategory!.title!)
+//
+//        //Adding compoundPredicate to pass category predicate and predicate that get passed in.
+//
+//        //Il predicate is nil, we only pass categorypredicate, otherwise we pass both predicates (searchbar and category): It is tone to manage predicate unwrupping set, as a default, as nil (see function arguments)
+//
+//        if let additionalPredicate = predicate{
+//            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, additionalPredicate])
+//        }else
+//        {
+//            request.predicate = categoryPredicate
+//        }
+//
+//        do{
+//            //Assigning fetch request to itemarray, where I store data
+//            itemArray = try context.fetch(request)
+//        }
+//        catch
+//        {
+//            print("error fetching data from context \(error)")
+//        }
+//
+//        tableView.reloadData()
+//    }
 }
 
 //MARK: - SEARCH BAR METHODS
 
 //Extending funcionalities of ToDoListViewController so as to be able to handle searchbar METHODS.
+
 extension TdoeyListViewController: UISearchBarDelegate {
-    
+
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+
+//MARK - Search bar Realm
         
-        //initializing request to be fetched to searchbar
-        let request : NSFetchRequest<Item> = Item.fetchRequest()
-        
-        //query that specifies qhat I want back: %@ is text to be inserted.
-        //MARK - Predicate DOcs: https://academy.realm.io/posts/nspredicate-cheatsheet/
-        //[cd]: insensitive to case and diacritic
-        
-        let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+//Filterind data in todoitems
     
-        //Sort by title and ascending order. We report it in titles and in ascending order.
-        request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+    todoItems = todoItems?.filter("title CONTAINS[cd] %@", searchBar.text!).sorted(byKeyPath: "date", ascending: true)
         
-        //Fetching request as done in loadData:
-        loadData(with: request, predicate: predicate)
+    tableView.reloadData()
+        
+//MARK - Search bar Core Data
+        
+//        //initializing request to be fetched to searchbar
+//        let request : NSFetchRequest<Item> = Item.fetchRequest()
+//
+//        //query that specifies qhat I want back: %@ is text to be inserted.
+//        //MARK - Predicate DOcs: https://academy.realm.io/posts/nspredicate-cheatsheet/
+//        //[cd]: insensitive to case and diacritic
+//
+//        let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+//
+//        //Sort by title and ascending order. We report it in titles and in ascending order.
+//        request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+//
+//        //Fetching request as done in loadData:
+//        loadData(with: request, predicate: predicate)
     }
-    
+
     //creating new method to load original list again. It is a delegate method that triggers when text is changed
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         //Text is changed but it has also gone to zero. When I insert a test and then I clear it for ex
         if searchBar.text?.count == 0 {
             //loading data again
             loadData()
-            
+
             //telling searchbar to resign
             //DispatchQueue is a Manager that manages threads. We'll tell him to put resigning process of searchbar in another thread (background). As process in bg is executed, data is retreived to main thread so app won't block during execution.
 
-            
+
             DispatchQueue.main.async {
                 searchBar.resignFirstResponder()
             }
